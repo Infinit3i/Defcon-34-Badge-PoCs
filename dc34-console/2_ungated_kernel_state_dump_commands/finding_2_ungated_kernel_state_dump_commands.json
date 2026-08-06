@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Exposure of sensitive system information to an unauthorized control sphere",
+  "file_path": "src/cmds/test.rs",
+  "line": 119,
+  "summary": "The `test proc`, `test freemem` and `test interrupts` console commands ship ungated in the default build and print the kernel's process table, RAM allocation map and interrupt handler table to the unauthenticated USB serial console.",
+  "explanation": "The three arms at src/cmds/test.rs:119, :131 and :143 carry no `#[cfg(feature = ...)]`, so build.sh's feature set compiles them in, and each issues a raw `xous::rsyscall(SysCall::PlatformSpecific(n, page_buf, ...))` with n of 2, 1 and 3. Their output is emitted with `log::info!` rather than returned, which would be harmless if the log stayed on a debug UART, but src/main.rs:42 calls `usb.serial_console_input_injection()` and the upstream handler for that request also asks the log server for `TryHookUsbMirror`, connecting the log sink to the USB device driver. The result is that kernel state is delivered to whoever holds the cable. The source comments in all three arms say the routine is not meant for public consumption.",
+  "malicious_actor": "unauthenticated USB peer, anyone who can plug a cable into a badge they do not own",
+  "parameter": "proc, freemem, interrupts (test command argument, USB serial console line)",
+  "trigger_flow": "USB serial console -> cmds.rs dispatch -> test.rs \"proc\"/\"freemem\"/\"interrupts\" arm -> xous::rsyscall(SysCall::PlatformSpecific(N, page_buf, ...)) -> log::info! per returned line -> log server USB mirror -> attacker terminal",
+  "malicious_input_example": "test proc",
+  "exploitable": false
+}

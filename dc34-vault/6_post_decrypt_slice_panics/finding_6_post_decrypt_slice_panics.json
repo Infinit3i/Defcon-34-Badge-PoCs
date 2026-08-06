@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Improper input length validation leading to uncaught exception",
+  "file_path": "src/main.rs",
+  "line": 699,
+  "summary": "After a gene ciphertext authenticates, the plaintext is sliced to nine bytes and indexed at offset fifteen with no length check, so a key holder who encrypts a shorter plaintext panics the vault process.",
+  "explanation": "aead.decrypt returns a Vec whose length is whatever the sender encrypted. main.rs:699 evaluates &msg[..size_of::<Haploid>()], and Haploid is repr(C) with nine u8 fields, so the slice panics below nine bytes; main.rs:702 indexes msg[15] and panics below sixteen. The unwrap_or on BadgeType::try_from handles an unrecognised discriminant but not the index. Honest peers always send sixteen bytes because get_padded_gamete builds a fixed [u8; 16], so a producer-side invariant is being relied on as though it were consumer-side validation. The AEAD tag proves key possession, not plaintext length.",
+  "malicious_actor": "key holder, meaning anyone who has brute-forced Ko or received it under the vendor's published disclosure schedule",
+  "parameter": "gene ciphertext QR payload (optical scan), specifically the plaintext length it decrypts to",
+  "trigger_flow": "attacker reads the victim's broadcast nonce -> encrypts a one byte plaintext under the population key and that nonce -> renders it as a QR code -> victim scans -> aead.decrypt succeeds -> msg[..9] slice panics -> process termination",
+  "malicious_input_example": "AES-256-GCM-SIV(K, victim_nonce, plaintext=[0x00], aad=[]) base45-encoded into a QR code",
+  "exploitable": false
+}

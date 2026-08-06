@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Improper validation of array index, reachable panic",
+  "file_path": "xous-ipc/src/buffer.rs",
+  "line": 114,
+  "summary": "The `offset` field of an IPC memory message becomes a slice bound in the receiving server with no check against the mapped page length, so any process can panic any server it can name by lending one page and setting `offset` past the end of it.",
+  "explanation": "`from_memory_message` builds `slice` from `mem.buf.len()` and `used` from `mem.offset.map_or(0, |v| v.get())` on adjacent lines and never compares them. Six expressions in the same file then index `self.slice[..self.used]`: `as_flat`, `to_original`, and the `AsRef`, `AsMut`, `Deref` and `DerefMut` impls. Rust panics when the bound exceeds the slice length. `MemoryAddress` is a bare `NonZeroUsize`, the kernel's syscall dispatcher copies `offset` through unchanged, and `lend_memory` never receives it, validating only that the region is non-zero and page-aligned. PDDB open-codes the same bound with an added `.expect()`, so an absent `offset` panics it too. Xous has no supervisor, so a panicked server is gone until reboot, and the name server is reachable by every process through a hardcoded server id.",
+  "malicious_actor": "a process already running on the device, with no privilege of its own",
+  "parameter": "offset (MemoryMessage, IPC)",
+  "trigger_flow": "hostile process -> Message::Borrow with offset > page length -> kernel syscall.rs copies offset through -> server calls Buffer::from_memory_message -> used = offset -> &self.slice[..self.used] -> panic -> server process terminates with nothing to restart it",
+  "malicious_input_example": "xous::send_message(cid, Message::Borrow(MemoryMessage { id, buf: one_page, offset: MemoryAddress::new(0x9999), valid: MemorySize::new(0x1000) }))",
+  "exploitable": false
+}

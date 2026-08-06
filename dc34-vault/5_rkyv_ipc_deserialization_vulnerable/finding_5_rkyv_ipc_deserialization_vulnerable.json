@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Vulnerable third party component on the IPC deserialization boundary",
+  "file_path": "Cargo.lock",
+  "line": 1,
+  "summary": "Cargo.lock resolves rkyv to 0.8.15, which is inside the affected range of a published use-after-free and two out-of-bounds reads in archive validation, and every Xous inter-process message the vault accepts is deserialized with it.",
+  "explanation": "Cargo.toml requests rkyv \"0.8.8\" as a caret requirement and the lockfile resolves 0.8.15. RUSTSEC-2026-0233 (use-after-free during deserialization), RUSTSEC-2026-0234 and RUSTSEC-2026-0235 (out-of-bounds reads from insufficient archive validation) are all fixed only in 0.8.17, and GHSA-vfvv-c25p-m7mm is fixed in 0.8.16. Nine call sites consume archives from peer memory messages via Buffer::to_original and each ends in unwrap or expect. main.rs:104 registers the vault server with None as the maximum connection count, so the Xous name server does not bound which processes may connect.",
+  "malicious_actor": "a process on the badge able to connect to the vault server and send it a memory message",
+  "parameter": "rkyv archive bytes in a Xous shared memory page, consumed by Buffer::to_original()",
+  "trigger_flow": "attacker process -> xous::connect to SERVER_NAME_VAULT2 -> memory message -> Buffer::from_memory_message -> to_original::<T, _>() -> rkyv archive validation",
+  "malicious_input_example": "a crafted rkyv archive exercising RUSTSEC-2026-0233 sent as the body of a VaultOp::HandleQr memory message",
+  "exploitable": false
+}

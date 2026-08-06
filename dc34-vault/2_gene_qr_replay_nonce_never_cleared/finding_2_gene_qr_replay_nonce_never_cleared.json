@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Capture-replay of an authenticated ciphertext due to a nonce that is never retired",
+  "file_path": "src/main.rs",
+  "line": 695,
+  "summary": "A badge that successfully decrypts a gene response keeps its nonce, and re-entering the scan state does not generate a new one, so the same captured response ciphertext can be redeemed an unlimited number of times with a fresh randomised outcome each time.",
+  "explanation": "clear_nonces() at config.rs:391 has exactly one caller, ux.rs:1707, which sits in the donor's ResponseGene key handler and clears a nonce that was never used for decryption. The recipient's success path at main.rs:695 through main.rs:771, and the KeepGene and RevertGene handlers, never clear it, and the idle to GeneScan transition at ux.rs:1683 does not call nonce_data(). The difference check inside generate_my_nonce that the vendor's Security proposition 2 relies on only runs when a nonce is generated, which the replay path avoids. The one-minute expiry described in defcon-scheme.md is not implemented; the LONG_TIMEOUT applied to the gene modes is eight hours of screen blanking.",
+  "malicious_actor": "any player, using only their own badge and a captured image of another badge's response code",
+  "parameter": "gene response QR payload (optical scan, ciphertext plus tag)",
+  "trigger_flow": "recipient shows nonce QR -> donor responds with ciphertext under that nonce -> recipient decrypts and breeds -> nonce_mine retained -> recipient presses fire from Idle to re-enter GeneScan -> rescans the same ciphertext -> decrypt succeeds again with fresh randomised syngamy",
+  "malicious_input_example": "a photograph of a donor badge's DAT response QR code, rescanned repeatedly without the recipient displaying a new nonce",
+  "exploitable": false
+}

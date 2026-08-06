@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Improper input length validation leading to uncaught exception",
+  "file_path": "src/main.rs",
+  "line": 624,
+  "summary": "The QR handler slices the base45-decoded scan buffer to a 16 byte header length before verifying the buffer is that long, so any QR code decoding to fewer than 16 bytes panics and terminates the vault process.",
+  "explanation": "DC34_HEADER is a compile-time [u8; 16], so `data[..DC34_HEADER.len()]` is `&data[..16]` on a Vec built from fully attacker-controlled QR content. Rust range slicing panics when the end index exceeds the length. The only length guard in the function sits two lines later at main.rs:626 and is nested inside the comparison that has already panicked; it was written to protect the nonce extraction that follows and was never extended to cover the header comparison.",
+  "malicious_actor": "proximate stranger with no credentials, able to display a QR code to the victim badge",
+  "parameter": "QR code payload (optical scan, arriving as IpcString)",
+  "trigger_flow": "attacker QR code -> camera scanner -> VaultOp::HandleQr -> base45::decode -> data[..DC34_HEADER.len()] slice with no length guard -> panic -> process termination",
+  "malicious_input_example": "a QR code encoding the two character string \"00\", which base45-decodes to a single byte",
+  "exploitable": false
+}

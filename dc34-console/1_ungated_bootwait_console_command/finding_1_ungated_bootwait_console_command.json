@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Missing authentication for critical function, persistent denial of service",
+  "file_path": "src/cmds/test.rs",
+  "line": 43,
+  "summary": "The `test bootwait enable` console command is compiled into the shipping firmware with no feature gate and reachable from the unauthenticated USB serial console, and it sets the one-way counter that the boot1 bootloader uses to decide whether to boot the operating system at all.",
+  "explanation": "The `\"bootwait\"` arm of the `test` dispatch in src/cmds/test.rs carries no `#[cfg(feature = ...)]`, unlike the hazardous arms beside it (`fakek0` behind misc-test, `k0check` behind hazardous-test), so build.sh's feature set ships it. src/main.rs:42 opens the USB serial console unconditionally through an upstream API documented as dangerous, and nothing between the USB endpoint and the match performs authentication. The arm calls Keystore::bootwait, which increments ACRAM one-way counter 80 with no cap and unwraps the result; boot1 only calls try_boot() when that counter decodes to Disable, so setting it to Enable stops the badge booting on every subsequent power-up and the application that could reverse it never runs again.",
+  "malicious_actor": "unauthenticated USB peer, anyone who can plug a cable into a badge they do not own",
+  "parameter": "bootwait enable (test command argument, USB serial console line)",
+  "trigger_flow": "USB serial console -> shell.rs keypress accumulator -> cmds.rs dispatch -> test.rs \"bootwait\" arm -> Keystore::bootwait(Some(true)) -> keystore Opcode::Bootwait -> set_bootwait() -> inc_coded::<BootWaitCoding>() on ACRAM one-way counter 80",
+  "malicious_input_example": "test bootwait enable",
+  "exploitable": false
+}

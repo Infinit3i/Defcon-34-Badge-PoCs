@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Deserialization of untrusted data",
+  "file_path": "xous-ipc/src/buffer.rs",
+  "line": 334,
+  "summary": "`Buffer::to_original` and `Buffer::as_flat` deserialize a sending process's bytes with `rkyv::access_unchecked`, and the root position rkyv transmutes at is derived from the message `offset` the same sender chooses, so any process can hand any server it can name an archived value whose relative pointers and lengths it controls.",
+  "explanation": "`from_memory_message` sets `used` from `mem.offset` verbatim and `slice` from the mapped page length, relating them nowhere; `to_original` then evaluates `rkyv::access_unchecked::<U>(&self.slice[..self.used])`, and rkyv computes the root as `size.saturating_sub(size_of::<Archived T>())` over that slice. rkyv's own documentation states the bytes must already represent a valid archived type and names `access` as the validating alternative, which is not called anywhere in the tree; the only bounds assertion rkyv carries is `#[cfg(debug_assertions)]` and is absent from release builds. The kernel copies `offset` and `valid` through unchanged and its `lend_memory` never sees them. Reachability needs no grant: the name server has a hardcoded well-known id, and it plus PDDB register with an unlimited connection count that checks a count rather than an identity.",
+  "malicious_actor": "a process already running on the device, with no privilege of its own",
+  "parameter": "the lent page's bytes plus offset (MemoryMessage, IPC)",
+  "trigger_flow": "hostile process -> Message::Borrow with attacker bytes and attacker offset -> kernel syscall.rs copies offset through -> server calls Buffer::from_memory_message -> to_original::<T>() -> rkyv::access_unchecked at a sender-chosen root position -> rkyv::deserialize follows the archived type's relative pointers",
+  "malicious_input_example": "map one page, fill it with chosen bytes rather than an rkyv serialization, then xous::send_message(cid, Message::Borrow(MemoryMessage { id, buf: page, offset: MemoryAddress::new(0x40), valid: MemorySize::new(0x1000) }))",
+  "exploitable": false
+}

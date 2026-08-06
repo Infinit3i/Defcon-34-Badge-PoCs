@@ -1,0 +1,35 @@
+[
+ {
+  "vulnerability_type": "Access-control bypass / OOB (hardware DMA confused deputy)",
+  "file_path": "rtl/modules/crypto_top/rtl/sce_memc.sv",
+  "line": 212,
+  "summary": "SCE DMA authorizes by caller segid (scedma_ac) but computes cryptoram address as SEGCFGS[segid].segaddr + caller segptr with no bounds check against segsize; a caller allowed a benign segment can point into key segments.",
+  "malicious_actor": "less-trusted on-chip master using the general/non-secure SCE DMA channel (xch, axim_gnl) whose access rules deny reads of key segments",
+  "parameter": "cr_segptrstart (APB SFR 0x20 xch / 0x40 sch / 0x58 ich) with cr_segid (0x1c/0x3c/0x54)",
+  "trigger_flow": "program xchcr.segid=readable seg + xchcr.segstart=(keybase-segbase) + axstart=ext buf -> xchstart -> scedmachnl_axim -> scedma_chnl -> sce_memc addr=base+ptr -> reads key words to external AXI",
+  "malicious_input_example": "segid=SEGID_AOB(0x0f), segstart chosen so segaddr+segptr=SEGADDR_KEY, func=read-out",
+  "exploitable": false
+ },
+ {
+  "vulnerability_type": "Security bypass via fuse/devmode",
+  "file_path": "rtl/modules/crypto_top/rtl/sce.sv",
+  "line": 131,
+  "summary": "devmode input OR fuse byte nvrcfg[28] sets 5 bypass bits incl mode-quit RAM clear bypass (keys persist into non-secure mode where scedma_ac is disabled) and NVR-driven access-rule override (nvrcfg[29]==0x5a swaps hardwired ACRULEs).",
+  "malicious_actor": "attacker who can set devmode or influence NVR/fuse provisioning",
+  "parameter": "devmode, nvrcfg[28], nvrcfg[29]",
+  "trigger_flow": "devmode/nvrcfg[28] -> devmode_sce='1 -> modequit bypass -> no ram clear on secure->non-secure -> acenable=0 full access to resident keys",
+  "malicious_input_example": "nvrcfg[28] bit1 set; or nvrcfg[29]=0x5a with attacker rules",
+  "exploitable": false
+ },
+ {
+  "vulnerability_type": "Fail-open HMAC verify (secure-boot trust anchor)",
+  "file_path": "rtl/modules/crypto_top/rtl/combohasha.sv",
+  "line": 480,
+  "summary": "HMAC/secret check verdict chkprepass initializes to 1(pass) and is only cleared when a compared word is nonzero, updated only on segwr; if the compare phase completes without word-writes streaming (suppressed/zero-length transfer or glitch), chkpass=1 vacuously and sce_ts sets trust bit kid. Verdict fails open.",
+  "malicious_actor": "fault-injection / control-path attacker against secure boot",
+  "parameter": "kid, the SCRT compare transfer (schcrx.transize=STSIZE)",
+  "trigger_flow": "MFSM_LD_SECRET: chkprepass init 1 -> compare words -> chkdone -> chkpass=chkdone&&chkprepass -> hmac_pass -> sce_ts tsreg[kid]=1",
+  "malicious_input_example": "skip/suppress the compare writes so chkprepass stays 1; or glitch the write-enable during MFSM_LD_SECRET",
+  "exploitable": false
+ }
+]

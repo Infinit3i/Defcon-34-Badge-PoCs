@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Uncontrolled resource consumption via an unbounded reassembly buffer",
+  "file_path": "src/vendor_commands.rs",
+  "line": 45,
+  "summary": "The CTAP HID vendor session appends payload chunks to a Vec with no size or count limit, and the caller only resets the session when the host declares the transfer finished, so a host that always sets more_data exhausts the device heap.",
+  "explanation": "read_from_wire performs self.data.append(&mut w.data.clone()) with no bound, and fido2.rs:64 resets the session only on Ok(None) or Err. A host that keeps more_data true keeps finished false, so the handler returns the continue response and the buffer is retained across iterations. The ordering check at vendor_commands.rs:54 that might have terminated a malformed stream is inert because self.index is never assigned and stays zero, making the first conjunct always false. All of this runs before the allow_host consent gate, which in this build is permanently false since no store to it exists in the tree.",
+  "malicious_actor": "malicious or compromised USB host to which the badge is attached",
+  "parameter": "CTAP HID vendor command payload, more_data flag in the backup::Wire CBOR record",
+  "trigger_flow": "USB HID vendor frame -> HidIterType::Vendor -> handle_vendor_data -> read_from_wire -> self.data.append with more_data set -> repeated without limit -> heap exhaustion -> process termination",
+  "malicious_input_example": "a loop of CTAP HID vendor commands with command byte 0x71 carrying a CBOR backup::Wire record whose more_data field is always true and whose data field is full size",
+  "exploitable": false
+}

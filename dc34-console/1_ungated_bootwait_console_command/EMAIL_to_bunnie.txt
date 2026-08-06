@@ -1,0 +1,57 @@
+To:      bunnie@kosagi.com
+Subject: [Security] dc34-console: unauthenticated persistent boot DoS via `test bootwait` over USB
+
+Hi bunnie,
+
+I found a security issue in dc34-console (the DC34 badge console) that I would like to
+report under coordinated disclosure. I am reporting by email because the repository has no
+SECURITY.md and GitHub private vulnerability reporting is disabled on it; please point me at
+a better channel if you have one.
+
+Summary
+The badge presents an unauthenticated USB serial console. One line on it,
+`test bootwait enable`, flips one-way counter 80 in the SoC ACRAM to Enable. The boot1
+bootloader only calls try_boot() when that counter decodes to Disable, so from then on the
+badge stops loading Xous and halts in the bootloader on every power-up. The application
+console that could set the counter back is part of the OS, so it never runs again. Recovery
+requires reaching the boot1 REPL or the USB updater, which an ordinary owner will not know to
+do.
+
+Two things make it worse than a reboot-to-fix DoS:
+- It persists across power cycles and cannot be undone from the application.
+- `enable`/`disable` is an unlimited toggle, and each call burns one increment of a
+  wear-limited (~10k) ReRAM one-way counter that also carries board type, alt-boot and
+  developer-mode state. set_bootwait() also unwrap()s the increment result, so a worn counter
+  panics the keystore server.
+
+Impact and reach
+No credentials, no pairing, a few seconds of USB access. The badge is carried in public and
+charged from shared power, so a hostile port or cable is a realistic path. I rate it Medium
+(CVSS 4.0 AV:P/AC:L/AT:N/PR:N/UI:N/VC:N/VI:L/VA:H/SC:N/SI:N/SA:N, 5.2), dominated by the
+physical vector, but persistent and, at the counter level, irreversible.
+
+Note: the `test k0` / `test jig` commands raised in dc34-console PR #1 share the root cause
+(an unprotected `test` subcommand) but that report does not name `bootwait`, and the fix it
+proposes leaves `bootwait` reachable.
+
+Fix (full detail in the attached PATCH.md)
+1. Gate the `"bootwait"` arm in src/cmds/test.rs:43 with `#[cfg(feature = "hazardous-test")]`,
+   matching k0check, so it is not compiled into build.sh builds. One line, closes the report.
+2. Require physical-presence confirmation before any state-changing console command, since the
+   USB console is unauthenticated.
+3. In xous-core keystore set_bootwait(): cap increments per boot against ONEWAY_MAX_DELTA and
+   stop unwrap()ing IncFail so a worn counter cannot panic the keystore server.
+4. Optionally add a hold-a-button-at-boot recovery in boot1 so an owner can clear the state.
+
+Attached
+- advisory_1_ungated_bootwait_console_command.md  (full writeup + source-verification script)
+- PATCH.md                                        (the four fixes above, with a diff)
+
+I have verified the reachability chain in your source at dc34-console bf64e03 and xous-core
+616bf65f; the verification script is in the advisory. I have also reproduced the crash-a-badge
+class of bug on hardware separately. Happy to share more, test a patch, or coordinate a
+timeline. I plan to hold public disclosure for 90 days or until a fix ships, whichever comes
+first.
+
+Thanks for building an open badge,
+[your name / handle]

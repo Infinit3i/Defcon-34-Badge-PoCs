@@ -1,0 +1,12 @@
+{
+  "vulnerability_type": "Missing authentication for a critical function, gated on a hardcoded public constant",
+  "file_path": "src/main.rs",
+  "line": 824,
+  "summary": "A QR code containing factory://factory-aae949f6969-lorem-ipsum-data forces any badge into the factory standalone test mode, because the only check is string equality against a constant published in this open source repository.",
+  "explanation": "FACTORY_STANDALONE_STRING at ux.rs:29 is a compile-time constant with a randomised-looking substring, used as though it were a shared secret. The QR handler reaches the comparison on the path taken when base45 decoding fails, splits the input on \"://\" and dispatches by scheme; the factory arm assigns VaultMode::StandAloneTest on equality with no further gate, no button confirmation and no check that the module is detached from the badge carrier.",
+  "malicious_actor": "proximate stranger with no credentials, able to display a QR code to the victim badge",
+  "parameter": "QR code payload, the factory:// scheme string (optical scan)",
+  "trigger_flow": "attacker QR code -> VaultOp::HandleQr -> base45 decode fails -> split_once(\"://\") -> factory arm -> data == FACTORY_STANDALONE_STRING -> VaultMode::StandAloneTest",
+  "malicious_input_example": "a QR code encoding the exact string factory://factory-aae949f6969-lorem-ipsum-data",
+  "exploitable": false
+}
