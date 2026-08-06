@@ -18,7 +18,7 @@ Authorized research against the open-source DEF CON 34 badge (baochip / betruste
 | V1 | dc34-vault | Medium | Unchecked slice on untrusted input (CWE-1284) | src/main.rs:624 | **LIVE CONFIRMED on hardware** |
 | V2 | dc34-vault | Medium | Capture-replay, un-retired nonce (CWE-294) | src/main.rs:695 | source-verified |
 | V3 | dc34-vault | Medium | Unbounded allocation (CWE-770) | src/vendor_commands.rs:45 | source-verified |
-| V4 | dc34-vault | Low | Hardcoded constant as authenticator (CWE-798) | src/main.rs:824 | source-verified |
+| V4 | dc34-vault | Low | Hardcoded constant as authenticator (CWE-798) | src/main.rs:824 | **LIVE CONFIRMED on hardware** |
 | V5 | dc34-vault | Low | Vulnerable component on IPC boundary (CWE-1104) | Cargo.lock (rkyv 0.8.15) | source-verified |
 | V6 | dc34-vault | Low | Unchecked slice on decrypted input (CWE-1284) | src/main.rs:699 | source-verified |
 | C1 | dc34-console | Medium | Missing auth for critical function (CWE-306) | src/cmds/test.rs:43 | source-verified |
@@ -52,7 +52,8 @@ Individually Medium/Low. Chained, this is a local-code-execution-to-key-extracti
 
 ## Confirmation status
 
-- **V1 is live-confirmed on a real badge.** A QR of the two characters `00` panics and kills the vault process (FIDO2 stops answering, UI freezes, power-cycle recovers, data intact). This was source-verified in the original audit and is now reproduced on hardware.
+- **V1 is live-confirmed on a real badge.** A QR of the two characters `00` panics and kills the vault process (FIDO2 stops answering, UI freezes, power-cycle recovers, data intact).
+- **V4 is live-confirmed on a real badge.** A QR of `factory://factory-aae949f6969-lorem-ipsum-data` forces the badge out of the conference UI into the factory standalone test sequence.
 - Everything else is source-verified. See `PoCs/` for how to confirm the rest.
 
 ## Highest-value items

@@ -1,6 +1,6 @@
 # PoC 02 — factory mode via hardcoded QR constant
 
-Finding V4, `dc34-vault/src/main.rs:824`, CWE-798 / CWE-306. Source-verified.
+Finding V4, `dc34-vault/src/main.rs:824`, CWE-798 / CWE-306. **LIVE CONFIRMED on hardware.**
 
 ## Payload
 
