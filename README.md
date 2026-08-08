@@ -22,7 +22,7 @@ Authorized research against the open-source DEF CON 34 badge (baochip / betruste
 | V5 | dc34-vault | Low | Vulnerable component on IPC boundary (CWE-1104) | Cargo.lock (rkyv 0.8.15) | source-verified |
 | V6 | dc34-vault | Low | Unchecked slice on decrypted input (CWE-1284) | src/main.rs:699 | source-verified |
 | C1 | dc34-console | Medium | Missing auth for critical function (CWE-306) | src/cmds/test.rs:43 | source-verified |
-| C2 | dc34-console | Low | Sensitive system info exposure (CWE-497) | src/cmds/test.rs:119 | source-verified |
+| C2 | dc34-console | Low | Sensitive system info exposure (CWE-497) | src/cmds/test.rs:119 | **LIVE CONFIRMED on hardware** (leaks handler code addrs + live SRAM/0x6000_0000 pointers) |
 | S1 | baochip-1x | candidate (High if confirmed) | Access-control bypass / OOB read (CWE-284 -> CWE-200) | crypto_top/rtl/sce_memc.sv:212, sce_dmachnl.sv:123 | source-verified, needs verilator |
 | S2 | baochip-1x | candidate | Fail-open HMAC secure-boot verify (CWE-636) | crypto_top/rtl/combohasha.sv:480 | source-verified, needs sim/hardware |
 | S3 | baochip-1x | candidate | Fuse/devmode security bypass | crypto_top/rtl/sce.sv:131 | source-verified |
@@ -52,9 +52,13 @@ Individually Medium/Low. Chained, this is a local-code-execution-to-key-extracti
 
 ## Confirmation status
 
+Live badge: Baochip Baosec-lite (USB 1d50:6198, serial B9GZZT), firmware Xous `v0.10.2-beta1-71-gf3e687b2b` (commit f3e687b2b).
+
 - **V1 is live-confirmed on a real badge.** A QR of the two characters `00` panics and kills the vault process (FIDO2 stops answering, UI freezes, power-cycle recovers, data intact).
 - **V4 is live-confirmed on a real badge.** A QR of `factory://factory-aae949f6969-lorem-ipsum-data` forces the badge out of the conference UI into the factory standalone test sequence.
-- Everything else is source-verified. See `PoCs/` for how to confirm the rest.
+- **C2 is live-confirmed on a real badge.** `test proc`/`test freemem`/`test interrupts` on the unauthenticated USB console dump the process table, RAM map, and interrupt handlers, including handler code addresses and live SRAM (0x2000_0000) and 0x6000_0000 (SCE region) pointers.
+- **K1 and K2 are version-confirmed on the live firmware.** `xous-ipc/src/buffer.rs` at the badge's running commit f3e687b2b is byte-identical to the audited 5d5bbbf, so both kernel IPC bugs are present on the hardware (live-trigger needs a sideloaded app; not yet run).
+- Remaining findings are source-verified. See `PoCs/` for how to confirm the rest.
 
 ## Highest-value items
 
